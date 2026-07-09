@@ -1,5 +1,5 @@
 const express = require('express');
-const Project = require('../models/Project');
+const Project = require('../models/project');
 const { protect } = require('../middleware/auth');
 const { restrictTo } = require('../middleware/role');
 const router = express.Router();
