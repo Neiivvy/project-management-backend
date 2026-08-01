@@ -1,4 +1,3 @@
-
 const express = require('express');
 const Project = require('../models/Project');
 const User = require('../models/User');
@@ -7,6 +6,38 @@ const { restrictTo } = require('../middleware/role');
 const Task = require('../models/Task');
 
 const router = express.Router();
+
+// --- Helper: attach computed progress to project(s) ---
+// Progress = (completed tasks / total tasks) * 100 for each project.
+// Projects with zero tasks get 0%.
+async function attachProgress(projects) {
+  const projectIds = projects.map((p) => p._id);
+  const taskCounts = await Task.aggregate([
+    { $match: { projectId: { $in: projectIds } } },
+    {
+      $group: {
+        _id: '$projectId',
+        total: { $sum: 1 },
+        completed: {
+          $sum: { $cond: [{ $eq: ['$status', 'Completed'] }, 1, 0] },
+        },
+      },
+    },
+  ]);
+
+  const progressMap = {};
+  taskCounts.forEach((tc) => {
+    progressMap[tc._id.toString()] = tc.total > 0
+      ? Math.round((tc.completed / tc.total) * 100)
+      : 0;
+  });
+
+  return projects.map((p) => {
+    const obj = p.toObject();
+    obj.progress = progressMap[p._id.toString()] || 0;
+    return obj;
+  });
+}
 
 // POST /api/projects — create project
 // Admin must pass managerId in body to assign a PM
@@ -53,7 +84,9 @@ router.get('/', protect, async (req, res, next) => {
         .populate('teamMembers', 'name email role')
         .sort({ createdAt: -1 });
     }
-    res.json({ success: true, count: projects.length, data: projects });
+
+    const projectsWithProgress = await attachProgress(projects);
+    res.json({ success: true, count: projects.length, data: projectsWithProgress });
   } catch (error) {
     next(error);
   }
@@ -78,7 +111,8 @@ router.get('/:id', protect, async (req, res, next) => {
       return res.status(403).json({ message: 'Not authorized to view this project' });
     }
 
-    res.json({ success: true, data: project });
+    const [projectWithProgress] = await attachProgress([project]);
+    res.json({ success: true, data: projectWithProgress });
   } catch (error) {
     next(error);
   }

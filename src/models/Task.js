@@ -14,7 +14,8 @@ const taskSchema = new mongoose.Schema({
     enum: ['To Do', 'In Progress', 'Review', 'Completed'], 
     default: 'To Do' 
   },
-  assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  assignedTo: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+  assignedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Task', taskSchema);

@@ -6,6 +6,26 @@ const { restrictTo } = require('../middleware/role');
 
 const router = express.Router();
 
+// --- Helper: auto-sync project status based on task completion ---
+// If all tasks are completed, mark project 'completed'.
+// If a project was 'completed' but progress drops below 100%, revert to 'active'.
+async function syncProjectStatus(projectId) {
+  const total = await Task.countDocuments({ projectId });
+  const completed = await Task.countDocuments({ projectId, status: 'Completed' });
+  const progress = total > 0 ? Math.round((completed / total) * 100) : 0;
+
+  const project = await Project.findById(projectId);
+  if (!project) return;
+
+  if (progress === 100 && project.status !== 'completed') {
+    project.status = 'completed';
+    await project.save();
+  } else if (progress < 100 && project.status === 'completed') {
+    project.status = 'active';
+    await project.save();
+  }
+}
+
 // POST /api/tasks — PM or admin creates + assigns task to a member
 // body: { title, description, priority, deadline, projectId, assignedTo }
 router.post('/', protect, restrictTo('admin', 'project_manager'), async (req, res, next) => {
@@ -30,8 +50,18 @@ router.post('/', protect, restrictTo('admin', 'project_manager'), async (req, re
       return res.status(400).json({ message: 'Assigned user must be a member of this project' });
     }
 
-    const task = await Task.create({ title, description, priority, deadline, projectId, assignedTo });
+    const task = await Task.create({
+      title,
+      description,
+      priority,
+      deadline,
+      projectId,
+      assignedTo,
+      assignedBy: req.user._id,
+    });
     await task.populate('assignedTo', 'name email');
+    await task.populate('assignedBy', 'name email');
+
     res.status(201).json({ success: true, data: task });
   } catch (error) {
     next(error);
@@ -52,6 +82,7 @@ router.get('/', protect, async (req, res, next) => {
 
     const tasks = await Task.find(query)
       .populate('assignedTo', 'name email')
+      .populate('assignedBy', 'name email')
       .populate('projectId', 'title')
       .sort({ createdAt: -1 });
 
@@ -66,6 +97,7 @@ router.get('/:id', protect, async (req, res, next) => {
   try {
     const task = await Task.findById(req.params.id)
       .populate('assignedTo', 'name email')
+      .populate('assignedBy', 'name email')
       .populate('projectId', 'title manager');
     if (!task) return res.status(404).json({ message: 'Task not found' });
     res.json({ success: true, data: task });
