@@ -1,43 +1,55 @@
 const mongoose = require("mongoose");
 
-const notificationSchema = new mongoose.Schema({
-  userId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-    required: true,
-  },
-  type: {
-    type: String,
-    enum: [
-      "task_assigned",
-      "task_commented",
-      "project_member_added",
-      "project_created",
-      "task_status_updated",
-      "user_promoted",
-    ],
-    required: true,
-  },
-  title: {
-    type: String,
-    required: true,
-  },
-  message: {
-    type: String,
-  },
-  relatedEntityType: {
-    type: String,
-    enum: ["project", "task", "user"],
-  },
-  relatedEntityId: mongoose.Schema.Types.ObjectId,
-  isRead: {
-    type: Boolean,
-    default: false,
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
+const NOTIFICATION_TYPES = [
+  "TASK_ASSIGNED",
+  "DEADLINE_UPDATED",
+  "COMMENT_ADDED",
+  "PROJECT_UPDATED",
+];
 
-module.exports = mongoose.model("Notification", notificationSchema);
+const NotificationSchema = new mongoose.Schema(
+  {
+    // who should see this notification
+    recipient: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
+    // who triggered it (optional — system events may have none)
+    actor: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+    },
+    type: {
+      type: String,
+      enum: NOTIFICATION_TYPES,
+      required: true,
+    },
+    // short, ready-to-render text — built once at creation time so the
+    // frontend never has to reconstruct sentences from raw ids
+    message: {
+      type: String,
+      required: true,
+    },
+    // links back to the thing the notification is about
+    entity: {
+      kind: { type: String, enum: ["task", "project", "comment"] },
+      id: { type: mongoose.Schema.Types.ObjectId },
+    },
+    // where clicking the notification should take the user
+    link: { type: String },
+    read: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+  },
+  { timestamps: true }
+);
+
+// fastest path for the notification bar: unread-first, newest-first, per user
+NotificationSchema.index({ recipient: 1, read: 1, createdAt: -1 });
+
+module.exports = mongoose.model("Notification", NotificationSchema);
+module.exports.NOTIFICATION_TYPES = NOTIFICATION_TYPES;

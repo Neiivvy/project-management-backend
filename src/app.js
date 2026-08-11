@@ -9,7 +9,7 @@ const commentRoutes = require("./routes/commentRoutes");
 const dashboardRoutes = require("./routes/dashboardRoutes");
 const errorHandler = require("./middleware/errorhandler");
 const activityRoutes = require("./routes/activityRoutes");
-const notificationRoutes = require("./routes/notificationRoutes");
+const notificationRoutes = require("./routes/notification");
 const reportRoutes = require("./routes/reportRoutes");
 const profileRoutes = require("./routes/profileRoutes");
 
