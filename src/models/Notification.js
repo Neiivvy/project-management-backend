@@ -1,55 +1,55 @@
 const mongoose = require("mongoose");
 
-const NOTIFICATION_TYPES = [
-  "TASK_ASSIGNED",
-  "DEADLINE_UPDATED",
-  "COMMENT_ADDED",
-  "PROJECT_UPDATED",
-];
-
-const NotificationSchema = new mongoose.Schema(
+const notificationSchema = new mongoose.Schema(
   {
-    // who should see this notification
-    recipient: {
+    userId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
-      index: true,
     },
-    // who triggered it (optional — system events may have none)
-    actor: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-    },
+
     type: {
       type: String,
-      enum: NOTIFICATION_TYPES,
+      enum: [
+        "task_assigned",
+        "deadline_updated",
+        "comment_added",
+        "project_updated",
+      ],
       required: true,
     },
-    // short, ready-to-render text — built once at creation time so the
-    // frontend never has to reconstruct sentences from raw ids
+
+    title: {
+      type: String,
+      required: true,
+    },
+
     message: {
       type: String,
       required: true,
     },
-    // links back to the thing the notification is about
-    entity: {
-      kind: { type: String, enum: ["task", "project", "comment"] },
-      id: { type: mongoose.Schema.Types.ObjectId },
+
+    relatedEntityType: {
+      type: String,
+      enum: ["task", "comment", "project"],
+      required: true,
     },
-    // where clicking the notification should take the user
-    link: { type: String },
+
+    relatedEntityId: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+    },
+
     read: {
       type: Boolean,
       default: false,
-      index: true,
     },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
-// fastest path for the notification bar: unread-first, newest-first, per user
-NotificationSchema.index({ recipient: 1, read: 1, createdAt: -1 });
-
-module.exports = mongoose.model("Notification", NotificationSchema);
-module.exports.NOTIFICATION_TYPES = NOTIFICATION_TYPES;
+module.exports =
+  mongoose.models.Notification ||
+  mongoose.model("Notification", notificationSchema);
