@@ -12,6 +12,7 @@ const activityRoutes = require("./routes/activityRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 const reportRoutes = require("./routes/reportRoutes");
 const profileRoutes = require("./routes/profileRoutes");
+const contactRoutes = require("./routes/contactRoutes");
 
 const app = express();
 
@@ -33,6 +34,8 @@ app.use("/api/activities", activityRoutes);
 app.use("/api/notifications", notificationRoutes);
 app.use("/api/reports", reportRoutes);
 app.use("/api/profile", profileRoutes);
+app.use("/api/contact", contactRoutes);
+app.use("/api/admin/contacts", contactRoutes);
 
 app.get("/api/health", (req, res) => res.json({ status: "ok" }));
 
