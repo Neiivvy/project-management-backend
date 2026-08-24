@@ -7,7 +7,7 @@ const notify = require("../utils/notify");
 
 const router = express.Router();
 
-// GET /api/users — admin sees all users, PM sees all non-admin users
+// GET /api/users — admin sees all verified users, PM sees all verified non-admin users
 router.get(
   "/",
   protect,
@@ -17,9 +17,11 @@ router.get(
       let users;
 
       if (req.user.role === "admin") {
-        users = await User.find().select("-password").sort({ createdAt: -1 });
+        users = await User.find({ emailVerified: true })
+          .select("-password")
+          .sort({ createdAt: -1 });
       } else {
-        users = await User.find({ role: { $ne: "admin" } })
+        users = await User.find({ role: { $ne: "admin" }, emailVerified: true })
           .select("-password")
           .sort({ createdAt: -1 });
       }
